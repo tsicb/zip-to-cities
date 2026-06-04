@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>郵便番号コード付与ETL</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 40px;
+      line-height: 1.7;
+      color: #222;
+      background: #f7f7f8;
+    }
+
+    .app {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 28px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 12px;
+    }
+
+    .note {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .box {
+      border: 1px dashed #bbb;
+      border-radius: 12px;
+      padding: 24px;
+      background: #fafafa;
+      margin: 20px 0;
+    }
+
+    input[type="file"] {
+      display: block;
+      margin-top: 12px;
+    }
+
+    .status {
+      white-space: pre-wrap;
+      background: #f1f3f5;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+    .ok {
+      color: #087f5b;
+      font-weight: 600;
+    }
+
+    .warn {
+      color: #c92a2a;
+      font-weight: 600;
+    }
+
+    code {
+      background: #f1f3f5;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>郵便番号コード付与ETL</h1>
+
+    <p class="note">
+      CSVの <code>郵便番号1</code> 列をもとに、
+      <code>県コード1</code> / <code>市区町村コード1</code> / <code>都道府県</code> / <code>市区町村</code>
+      を付与して、自動でCSVをダウンロードします。
+    </p>
+
+    <div class="box">
+      <label>
+        CSVファイルを選択してください
+        <input id="csvInput" type="file" accept=".csv,text/csv" disabled />
+      </label>
+    </div>
+
+    <div id="status" class="status">初期化中です...</div>
+  </main>
+
+  <script>
+    const ZIP_MASTER_PATH = "./zipcode_master.json";
+    const CITY_MASTER_PATH = "./city_master.json";
+
+    const PREF_NAMES = {
+      "1": "北海道",
+      "2": "青森県",
+      "3": "岩手県",
+      "4": "宮城県",
+      "5": "秋田県",
+      "6": "山形県",
+      "7": "福島県",
+      "8": "茨城県",
+      "9": "栃木県",
+      "10": "群馬県",
+      "11": "埼玉県",
+      "12": "千葉県",
+      "13": "東京都",
+      "14": "神奈川県",
+      "15": "新潟県",
+      "16": "富山県",
+      "17": "石川県",
+      "18": "福井県",
+      "19": "山梨県",
+      "20": "長野県",
+      "21": "岐阜県",
+      "22": "静岡県",
+      "23": "愛知県",
+      "24": "三重県",
+      "25": "滋賀県",
+      "26": "京都府",
+      "27": "大阪府",
+      "28": "兵庫県",
+      "29": "奈良県",
+      "30": "和歌山県",
+      "31": "鳥取県",
+      "32": "島根県",
+      "33": "岡山県",
+      "34": "広島県",
+      "35": "山口県",
+      "36": "徳島県",
+      "37": "香川県",
+      "38": "愛媛県",
+      "39": "高知県",
+      "40": "福岡県",
+      "41": "佐賀県",
+      "42": "長崎県",
+      "43": "熊本県",
+      "44": "大分県",
+      "45": "宮崎県",
+      "46": "鹿児島県",
+      "47": "沖縄県"
+    };
+
+    const state = {
+      zipIndex: new Map(),
+      cityNameMap: new Map(),
+      ambiguousZipCount: 0
+    };
+
+    const $status = document.getElementById("status");
+    const $csvInput = document.getElementById("csvInput");
+
+    function setStatus(message, type = "") {
+      const prefix = type === "ok" ? "完了: " : type === "warn" ? "注意: " : "";
+      $status.textContent = prefix + message;
+      $status.className = "status" + (type ? " " + type : "");
+    }
+
+    async function loadJson(path, required) {
+      const res = await fetch(path, { cache: "no-store" });
+
+      if (!res.ok) {
+        if (required) {
+          throw new Error(`${path} を読み込めませんでした。index.html と同じ階層に配置してください。`);
+        }
+        return null;
+      }
+
+      return await res.json();
+    }
+
+    function normalizeZip(value) {
+      const digits = String(value ?? "").replace(/[^\d]/g, "");
+      if (!digits) return "";
+      return digits.padStart(7, "0").slice(-7);
+    }
+
+    function normalizeCityCode(value) {
+      const digits = String(value ?? "").replace(/[^\d]/g, "");
+      if (!digits) return "";
+      return digits.padStart(5, "0");
+    }
+
+    function buildZipIndex(zipMaster) {
+      const index = new Map();
+      const ambiguous = new Set();
+
+      for (const rec of zipMaster) {
+        const zip = normalizeZip(rec.zip);
+        if (!zip) continue;
+
+        const pref = String(rec.pref ?? "");
+        const city = String(rec.city ?? "");
+
+        if (!index.has(zip)) {
+          index.set(zip, rec);
+          continue;
+        }
+
+        const existing = index.get(zip);
+        const existingKey = `${existing.pref}|${existing.city}`;
+        const newKey = `${pref}|${city}`;
+
+        if (existingKey !== newKey) {
+          ambiguous.add(zip);
+        }
+      }
+
+      state.zipIndex = index;
+      state.ambiguousZipCount = ambiguous.size;
+    }
+
+    function buildCityNameMap(raw) {
+      const map = new Map();
+      if (!raw) return map;
+
+      if (Array.isArray(raw)) {
+        for (const item of raw) {
+          const code =
+            item.code ??
+            item.cityCode ??
+            item.city_code ??
+            item.municipalityCode ??
+            item["市区町村コード"];
+
+          const name =
+            item.name ??
+            item.cityName ??
+            item.city_name ??
+            item.municipalityName ??
+            item["市区町村"];
+
+          if (code && name) {
+            map.set(String(code), String(name));
+            map.set(normalizeCityCode(code), String(name));
+          }
+        }
+        return map;
+      }
+
+      if (typeof raw === "object") {
+        for (const [code, value] of Object.entries(raw)) {
+          let name = "";
+
+          if (typeof value === "string") {
+            name = value;
+          } else if (value && typeof value === "object") {
+            name =
+              value.name ??
+              value.cityName ??
+              value.city_name ??
+              value.municipalityName ??
+              value["市区町村"] ??
+              "";
+          }
+
+          if (name) {
+            map.set(String(code), String(name));
+            map.set(normalizeCityCode(code), String(name));
+          }
+        }
+      }
+
+      return map;
+    }
+
+    function decodeCsvBuffer(buffer) {
+      try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(buffer).replace(/^\uFEFF/, "");
+      } catch (e) {
+        return new TextDecoder("shift_jis").decode(buffer).replace(/^\uFEFF/, "");
+      }
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (inQuotes) {
+          if (ch === '"' && next === '"') {
+            cell += '"';
+            i++;
+          } else if (ch === '"') {
+            inQuotes = false;
+          } else {
+            cell += ch;
+          }
+          continue;
+        }
+
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ",") {
+          row.push(cell);
+          cell = "";
+        } else if (ch === "\n") {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = "";
+        } else if (ch === "\r") {
+          // CRLFのCRは無視
+        } else {
+          cell += ch;
+        }
+      }
+
+      row.push(cell);
+
+      if (row.length > 1 || row[0] !== "") {
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function toCSV(rows) {
+      return rows.map(row => {
+        return row.map(value => {
+          const s = String(value ?? "");
+          const needsQuote = /[",\r\n]/.test(s) || /^\s|\s$/.test(s);
+          const escaped = s.replace(/"/g, '""');
+          return needsQuote ? `"${escaped}"` : escaped;
+        }).join(",");
+      }).join("\r\n");
+    }
+
+    function ensureColumn(header, dataRows, columnName) {
+      let idx = header.indexOf(columnName);
+
+      if (idx === -1) {
+        idx = header.length;
+        header.push(columnName);
+
+        for (const row of dataRows) {
+          row[idx] = "";
+        }
+      }
+
+      return idx;
+    }
+
+    function getBaseName(fileName) {
+      return fileName.replace(/\.[^.]*$/, "");
+    }
+
+    function downloadTextAsFile(text, fileName) {
+      const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function processCSV(file) {
+      setStatus("CSVを読み込んでいます...");
+
+      const buffer = await file.arrayBuffer();
+      const csvText = decodeCsvBuffer(buffer);
+      const rows = parseCSV(csvText);
+
+      if (rows.length === 0) {
+        throw new Error("CSVにデータがありません。");
+      }
+
+      const header = rows[0].map((h, i) => {
+        const value = String(h ?? "").replace(/^\uFEFF/, "");
+        return i === 0 ? value.trim() : value.trim();
+      });
+
+      const dataRows = rows.slice(1);
+
+      const zipIdx = header.indexOf("郵便番号1");
+      if (zipIdx === -1) {
+        throw new Error("CSV内に「郵便番号1」ヘッダーが見つかりません。");
+      }
+
+      const prefCodeIdx = ensureColumn(header, dataRows, "県コード1");
+      const cityCodeIdx = ensureColumn(header, dataRows, "市区町村コード1");
+      const prefNameIdx = ensureColumn(header, dataRows, "都道府県");
+      const cityNameIdx = ensureColumn(header, dataRows, "市区町村");
+
+      let matched = 0;
+      let unmatched = 0;
+
+      for (const row of dataRows) {
+        while (row.length < header.length) row.push("");
+
+        const zip = normalizeZip(row[zipIdx]);
+        const rec = state.zipIndex.get(zip);
+
+        if (!zip || !rec) {
+          row[prefCodeIdx] = "";
+          row[cityCodeIdx] = "";
+          row[prefNameIdx] = "";
+          row[cityNameIdx] = "";
+          unmatched++;
+          continue;
+        }
+
+        const prefCode = String(rec.pref ?? "");
+        const cityCode = String(rec.city ?? "");
+        const normalizedCityCode = normalizeCityCode(cityCode);
+
+        const prefName =
+          rec.prefName ??
+          rec.pref_name ??
+          rec.prefecture ??
+          PREF_NAMES[String(Number(prefCode))] ??
+          "";
+
+        const cityName =
+          rec.cityName ??
+          rec.city_name ??
+          rec.municipalityName ??
+          state.cityNameMap.get(cityCode) ??
+          state.cityNameMap.get(normalizedCityCode) ??
+          "";
+
+        row[prefCodeIdx] = prefCode;
+        row[cityCodeIdx] = cityCode;
+        row[prefNameIdx] = prefName;
+        row[cityNameIdx] = cityName;
+
+        matched++;
+      }
+
+      const outputRows = [header, ...dataRows];
+
+      // Excelで開きやすいように UTF-8 BOM 付きで出力
+      const outputCsv = "\uFEFF" + toCSV(outputRows);
+      const outputName = `${getBaseName(file.name)}_zipcode_etl.csv`;
+
+      downloadTextAsFile(outputCsv, outputName);
+
+      const cityMasterMessage =
+        state.cityNameMap.size > 0
+          ? `市区町村名マスタ: ${state.cityNameMap.size.toLocaleString()}件`
+          : "市区町村名マスタ: 未読込のため、市区町村名は空欄になる場合があります。";
+
+      setStatus(
+        [
+          `処理が完了しました。`,
+          `入力行数: ${dataRows.length.toLocaleString()}件`,
+          `郵便番号マッチ: ${matched.toLocaleString()}件`,
+          `未取得: ${unmatched.toLocaleString()}件`,
+          cityMasterMessage,
+          `ダウンロードファイル: ${outputName}`
+        ].join("\n"),
+        unmatched > 0 || state.cityNameMap.size === 0 ? "warn" : "ok"
+      );
+    }
+
+    async function init() {
+      try {
+        setStatus("郵便番号マスタを読み込んでいます...");
+
+        const zipMaster = await loadJson(ZIP_MASTER_PATH, true);
+        buildZipIndex(zipMaster);
+
+        const cityMaster = await loadJson(CITY_MASTER_PATH, false);
+        state.cityNameMap = buildCityNameMap(cityMaster);
+
+        const messages = [
+          `郵便番号マスタ読込済み: ${state.zipIndex.size.toLocaleString()}件`,
+          `同一郵便番号で県・市区町村コードが分かれる可能性のある件数: ${state.ambiguousZipCount.toLocaleString()}件`
+        ];
+
+        if (state.cityNameMap.size > 0) {
+          messages.push(`市区町村名マスタ読込済み: ${state.cityNameMap.size.toLocaleString()}件`);
+        } else {
+          messages.push("city_master.json は見つかりませんでした。市区町村名まで入れたい場合は、同じ階層に追加してください。");
+        }
+
+        messages.push("");
+        messages.push("CSVファイルを選択すると、自動で変換してダウンロードします。");
+
+        setStatus(messages.join("\n"), state.cityNameMap.size > 0 ? "ok" : "warn");
+        $csvInput.disabled = false;
+      } catch (err) {
+        setStatus(err.message, "warn");
+        $csvInput.disabled = true;
+      }
+    }
+
+    $csvInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        await processCSV(file);
+      } catch (err) {
+        setStatus(err.message, "warn");
+      } finally {
+        event.target.value = "";
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
