@@ -25,6 +25,7 @@
     }
 
     body {
+      position: relative;
       margin: 0;
       min-height: 100vh;
       color: var(--text);
@@ -37,12 +38,44 @@
         "Noto Sans JP",
         sans-serif;
       background:
-        radial-gradient(circle at 20% 15%, rgba(116, 212, 255, 0.18), transparent 32%),
-        radial-gradient(circle at 85% 20%, rgba(156, 255, 203, 0.14), transparent 28%),
-        linear-gradient(145deg, #070a10, #101725 60%, #090d14);
+        radial-gradient(circle at 18% 12%, rgba(116, 212, 255, 0.20), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(156, 255, 203, 0.16), transparent 30%),
+        radial-gradient(circle at 50% 88%, rgba(116, 212, 255, 0.08), transparent 34%),
+        linear-gradient(145deg, #070a10, #101725 58%, #090d14);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          120deg,
+          rgba(116, 212, 255, 0.08),
+          transparent 30%,
+          rgba(156, 255, 203, 0.08) 70%,
+          transparent
+        );
+      opacity: 0.9;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent 85%);
     }
 
     .wrap {
+      position: relative;
+      z-index: 1;
       width: min(920px, calc(100% - 32px));
       margin: 0 auto;
       padding: 56px 0;
@@ -64,6 +97,9 @@
       font-size: 13px;
       letter-spacing: 0.02em;
       backdrop-filter: blur(16px);
+      box-shadow:
+        0 12px 34px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
 
     .dot {
@@ -79,6 +115,7 @@
       font-size: clamp(32px, 5vw, 54px);
       line-height: 1.05;
       letter-spacing: -0.05em;
+      text-shadow: 0 18px 60px rgba(116, 212, 255, 0.15);
     }
 
     .lead {
@@ -90,15 +127,39 @@
     }
 
     .panel {
+      position: relative;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      background: linear-gradient(180deg, var(--panel-strong), var(--panel));
-      box-shadow: var(--shadow);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.055)),
+        linear-gradient(135deg, rgba(116, 212, 255, 0.10), rgba(156, 255, 203, 0.055));
+      box-shadow:
+        0 32px 90px rgba(0, 0, 0, 0.52),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
       overflow: hidden;
       backdrop-filter: blur(20px);
     }
 
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      pointer-events: none;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.22),
+          transparent 28%,
+          transparent 70%,
+          rgba(116, 212, 255, 0.15)
+        );
+      opacity: 0.8;
+    }
+
     .panel-inner {
+      position: relative;
+      z-index: 1;
       padding: 28px;
     }
 
@@ -123,13 +184,25 @@
       padding: 24px;
       border: 1px dashed rgba(255, 255, 255, 0.28);
       border-radius: 20px;
-      background: rgba(255, 255, 255, 0.045);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035)),
+        radial-gradient(circle at 50% 0%, rgba(116, 212, 255, 0.12), transparent 58%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 18px 44px rgba(0, 0, 0, 0.20);
       transition: 0.18s ease;
     }
 
     .upload:hover {
+      transform: translateY(-2px);
       border-color: rgba(116, 212, 255, 0.75);
-      background: rgba(116, 212, 255, 0.07);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.04)),
+        radial-gradient(circle at 50% 0%, rgba(116, 212, 255, 0.18), transparent 60%);
+      box-shadow:
+        0 24px 58px rgba(0, 0, 0, 0.28),
+        0 0 40px rgba(116, 212, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
     }
 
     .upload input {
@@ -155,9 +228,13 @@
       place-items: center;
       margin: 0 auto 16px;
       border-radius: 18px;
-      background: rgba(116, 212, 255, 0.13);
+      background:
+        linear-gradient(135deg, rgba(116, 212, 255, 0.22), rgba(156, 255, 203, 0.14));
       color: var(--accent);
       font-size: 26px;
+      box-shadow:
+        0 10px 30px rgba(116, 212, 255, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
 
     .upload-title {
@@ -176,7 +253,11 @@
       padding: 20px;
       border: 1px solid var(--border);
       border-radius: 20px;
-      background: rgba(255, 255, 255, 0.045);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 18px 44px rgba(0, 0, 0, 0.18);
     }
 
     .settings-title {
@@ -255,6 +336,9 @@
     .switch input:checked + .slider {
       background: rgba(116, 212, 255, 0.35);
       border-color: rgba(116, 212, 255, 0.8);
+      box-shadow:
+        0 0 24px rgba(116, 212, 255, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
     }
 
     .switch input:checked + .slider::before {
@@ -270,11 +354,14 @@
     }
 
     .status {
-      margin-top: 18px;
+      position: relative;
+      z-index: 1;
+      margin-top: 0;
       padding: 18px 20px;
       min-height: 116px;
-      border-top: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.18);
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.20), rgba(0, 0, 0, 0.32));
       color: var(--muted);
       font-family:
         ui-monospace,
@@ -326,6 +413,7 @@
       <p class="lead">
         <code>郵便番号1</code> をもとに、
         <code>県コード1</code> と <code>市区町村コード1</code> を自動付与します。
+        <code>市区町村コード1</code> は下3桁のみ出力します。
         必要に応じて、都道府県名・市区町村名も出力できます。
       </p>
     </section>
@@ -465,6 +553,12 @@
       return digits.padStart(5, "0");
     }
 
+    function toMunicipalityCode3(value) {
+      const fullCode = normalizeCityCode(value);
+      if (!fullCode) return "";
+      return fullCode.slice(-3);
+    }
+
     function buildZipIndex(zipMaster) {
       const index = new Map();
       const ambiguous = new Set();
@@ -479,8 +573,8 @@
         }
 
         const existing = index.get(zip);
-        const existingKey = `${existing.pref}|${existing.city}`;
-        const newKey = `${rec.pref}|${rec.city}`;
+        const existingKey = `${existing.pref}|${normalizeCityCode(existing.city)}`;
+        const newKey = `${rec.pref}|${normalizeCityCode(rec.city)}`;
 
         if (existingKey !== newKey) {
           ambiguous.add(zip);
@@ -670,9 +764,8 @@
         throw new Error("CSVにデータがありません。");
       }
 
-      const header = rows[0].map((h, i) => {
-        const value = String(h ?? "").replace(/^\uFEFF/, "");
-        return i === 0 ? value.trim() : value.trim();
+      const header = rows[0].map((h) => {
+        return String(h ?? "").replace(/^\uFEFF/, "").trim();
       });
 
       const dataRows = rows.slice(1);
@@ -717,11 +810,15 @@
         }
 
         const prefCode = String(rec.pref ?? "");
-        const cityCode = String(rec.city ?? "");
-        const normalizedCityCode = normalizeCityCode(cityCode);
+        const cityCodeRaw = String(rec.city ?? "");
+        const normalizedCityCode = normalizeCityCode(cityCodeRaw);
+        const municipalityCode3 = toMunicipalityCode3(cityCodeRaw);
 
         row[prefCodeIdx] = prefCode;
-        row[cityCodeIdx] = cityCode;
+
+        // ここが今回の修正点：
+        // 市区町村コード1には、都道府県コードを除いた下3桁のみ出力する
+        row[cityCodeIdx] = municipalityCode3;
 
         if (shouldOutputNameColumns) {
           const prefName =
@@ -735,7 +832,7 @@
             rec.cityName ??
             rec.city_name ??
             rec.municipalityName ??
-            state.cityNameMap.get(cityCode) ??
+            state.cityNameMap.get(cityCodeRaw) ??
             state.cityNameMap.get(normalizedCityCode) ??
             "";
 
@@ -764,6 +861,7 @@
         outputRows = removeColumns(outputRows, removeIndexes);
       }
 
+      // Excelで開きやすいようにUTF-8 BOM付きで出力
       const outputCsv = "\uFEFF" + toCSV(outputRows);
       const outputName = `${getBaseName(file.name)}_zipcode_etl.csv`;
 
@@ -774,13 +872,14 @@
         `入力行数: ${dataRows.length.toLocaleString()}件`,
         `郵便番号マッチ: ${matched.toLocaleString()}件`,
         `未取得: ${unmatched.toLocaleString()}件`,
+        `市区町村コード1: 下3桁のみ出力`,
         `住所名列: ${shouldOutputNameColumns ? "出力する" : "出力しない"}`,
         `ダウンロードファイル: ${outputName}`
       ];
 
       if (shouldOutputNameColumns) {
         lines.splice(
-          5,
+          6,
           0,
           `市区町村名未取得: ${cityNameMissing.toLocaleString()}件`
         );
@@ -809,6 +908,7 @@
           `同一郵便番号で県・市区町村コードが分かれる可能性: ${state.ambiguousZipCount.toLocaleString()}件`,
           "",
           "CSVをアップロードすると、自動で変換してダウンロードします。",
+          "市区町村コード1は下3桁のみ出力します。",
           "住所名列の出力は右側のトグルで切り替えできます。"
         ];
 
