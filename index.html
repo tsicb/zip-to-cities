@@ -430,7 +430,7 @@
         <code>郵便番号1</code> をもとに、
         <code>県コード1</code> と <code>市区町村コード1</code> を自動付与します。
         <code>市区町村コード1</code> は下3桁のみ出力します。
-        町域が一意に決まる場合は、通常モードで <code>勤務地住所1</code> に上書きできます。
+        通常モードでは、<code>勤務地住所1</code> が空欄の場合のみ町域を補完します。
       </p>
     </section>
 
@@ -466,7 +466,7 @@
 
             <div class="mode-card">
               <strong>OFF：</strong>通常ETL<br>
-              <code>勤務地住所1</code> を町域で上書き。複数候補はブランク。
+              <code>勤務地住所1</code> が空欄の場合のみ町域で補完。既存値は保持。
             </div>
 
             <div class="mode-card">
@@ -617,16 +617,20 @@
         if (!recordsIndex.has(zip)) {
           recordsIndex.set(zip, []);
         }
+
         recordsIndex.get(zip).push(rec);
 
         const codeKey = `${String(rec.pref ?? "")}|${normalizeCityCode(rec.city)}`;
+
         if (!keysByZip.has(zip)) {
           keysByZip.set(zip, new Set());
         }
+
         keysByZip.get(zip).add(codeKey);
       }
 
       let ambiguousCount = 0;
+
       for (const keySet of keysByZip.values()) {
         if (keySet.size > 1) ambiguousCount++;
       }
@@ -701,7 +705,7 @@
 
       s = s.replace(/^[\s　]+|[\s　]+$/g, "");
 
-      // 「以下に掲載がない場合」は町域として上書きしたくないため空欄扱い
+      // 「以下に掲載がない場合」は町域として補完しない
       if (s.includes("以下に掲載がない場合")) {
         return "";
       }
@@ -877,6 +881,7 @@
       const dataRows = rows.slice(1);
 
       const zipIdx = header.indexOf("郵便番号1");
+
       if (zipIdx === -1) {
         throw new Error("CSV内に「郵便番号1」ヘッダーが見つかりません。");
       }
@@ -910,6 +915,9 @@
       let areaMultiple = 0;
       let areaMissing = 0;
       let cityNameMissing = 0;
+      let workAddressKept = 0;
+      let workAddressFilled = 0;
+      let workAddressBlankUnchanged = 0;
 
       for (const row of dataRows) {
         while (row.length < header.length) row.push("");
@@ -930,7 +938,13 @@
             row[areaCountIdx] = "";
             row[areaJudgeIdx] = "郵便番号未取得";
           } else {
-            row[workAddressIdx] = "";
+            const currentWorkAddress = String(row[workAddressIdx] ?? "").trim();
+
+            if (currentWorkAddress) {
+              workAddressKept++;
+            } else {
+              workAddressBlankUnchanged++;
+            }
           }
 
           unmatched++;
@@ -983,9 +997,19 @@
           }
         } else {
           // 通常モード：
-          // 町域候補が一意の場合のみ 勤務地住所1 に上書き。
-          // 複数候補・候補なしの場合は誤上書きを避けてブランク。
-          row[workAddressIdx] = areaInfo.judgment === "OK" ? areaInfo.areaValue : "";
+          // 勤務地住所1 に既存データがある場合は保持する。
+          // 勤務地住所1 がブランクの場合のみ、町域候補が一意なら補完する。
+          const currentWorkAddress = String(row[workAddressIdx] ?? "").trim();
+
+          if (currentWorkAddress) {
+            workAddressKept++;
+          } else if (areaInfo.judgment === "OK") {
+            row[workAddressIdx] = areaInfo.areaValue;
+            workAddressFilled++;
+          } else {
+            row[workAddressIdx] = "";
+            workAddressBlankUnchanged++;
+          }
         }
 
         matched++;
@@ -1028,7 +1052,9 @@
         lines.push(`市区町村名未取得: ${cityNameMissing.toLocaleString()}件`);
         lines.push("勤務地住所1: 変更なし");
       } else {
-        lines.push("勤務地住所1: 町域OKの場合のみ上書き");
+        lines.push(`勤務地住所1 既存値保持: ${workAddressKept.toLocaleString()}件`);
+        lines.push(`勤務地住所1 空欄補完: ${workAddressFilled.toLocaleString()}件`);
+        lines.push(`勤務地住所1 空欄のまま: ${workAddressBlankUnchanged.toLocaleString()}件`);
         lines.push("検証列: 出力しない");
       }
 
@@ -1059,7 +1085,8 @@
           `同一郵便番号で県・市区町村コードが分かれる可能性: ${state.ambiguousZipCount.toLocaleString()}件`,
           "",
           "CSVをアップロードすると、自動で変換してダウンロードします。",
-          "通常ETLモードでは、町域候補が一意の場合のみ 勤務地住所1 を上書きします。",
+          "通常ETLモードでは、勤務地住所1 が空欄の場合のみ町域を補完します。",
+          "勤務地住所1 に既存値がある場合は、上書きせず保持します。",
           "検証用詳細モードでは、勤務地住所1を変更せず、町域候補の確認列を出力します。"
         ];
 
