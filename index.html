@@ -16,6 +16,7 @@
       --accent: #74d4ff;
       --accent-2: #9cffcb;
       --danger: #ff9aa2;
+      --warning: #ffd166;
       --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
       --radius: 24px;
     }
@@ -76,7 +77,7 @@
     .wrap {
       position: relative;
       z-index: 1;
-      width: min(920px, calc(100% - 32px));
+      width: min(960px, calc(100% - 32px));
       margin: 0 auto;
       padding: 56px 0;
     }
@@ -119,7 +120,7 @@
     }
 
     .lead {
-      max-width: 720px;
+      max-width: 780px;
       margin: 0;
       color: var(--muted);
       font-size: 15px;
@@ -165,7 +166,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
+      grid-template-columns: 1.15fr 0.85fr;
       gap: 18px;
     }
 
@@ -178,7 +179,7 @@
     .upload {
       position: relative;
       display: flex;
-      min-height: 210px;
+      min-height: 230px;
       align-items: center;
       justify-content: center;
       padding: 24px;
@@ -222,8 +223,8 @@
     }
 
     .upload-icon {
-      width: 54px;
-      height: 54px;
+      width: 58px;
+      height: 58px;
       display: grid;
       place-items: center;
       margin: 0 auto 16px;
@@ -231,7 +232,7 @@
       background:
         linear-gradient(135deg, rgba(116, 212, 255, 0.22), rgba(156, 255, 203, 0.14));
       color: var(--accent);
-      font-size: 26px;
+      font-size: 28px;
       box-shadow:
         0 10px 30px rgba(116, 212, 255, 0.16),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -296,13 +297,13 @@
       display: block;
       color: var(--muted);
       font-size: 12px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     .switch {
       position: relative;
       flex: 0 0 auto;
-      width: 54px;
+      width: 56px;
       height: 30px;
     }
 
@@ -342,12 +343,23 @@
     }
 
     .switch input:checked + .slider::before {
-      transform: translateX(24px);
+      transform: translateX(26px);
       background: var(--accent);
     }
 
     .mini {
       margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .mode-card {
+      margin-top: 14px;
+      padding: 12px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.12);
       color: var(--muted);
       font-size: 12px;
       line-height: 1.7;
@@ -358,7 +370,7 @@
       z-index: 1;
       margin-top: 0;
       padding: 18px 20px;
-      min-height: 116px;
+      min-height: 128px;
       border-top: 1px solid rgba(255, 255, 255, 0.12);
       background:
         linear-gradient(180deg, rgba(0, 0, 0, 0.20), rgba(0, 0, 0, 0.32));
@@ -380,6 +392,10 @@
     }
 
     .status.warn {
+      color: var(--warning);
+    }
+
+    .status.error {
       color: var(--danger);
     }
 
@@ -408,13 +424,13 @@
         CSV ZIPCODE ETL
       </div>
 
-      <h1>郵便番号から<br>住所コードを付与</h1>
+      <h1>郵便番号から<br>住所情報を付与</h1>
 
       <p class="lead">
         <code>郵便番号1</code> をもとに、
         <code>県コード1</code> と <code>市区町村コード1</code> を自動付与します。
         <code>市区町村コード1</code> は下3桁のみ出力します。
-        必要に応じて、都道府県名・市区町村名も出力できます。
+        町域が一意に決まる場合は、通常モードで <code>勤務地住所1</code> に上書きできます。
       </p>
     </section>
 
@@ -431,25 +447,37 @@
           </label>
 
           <aside class="settings">
-            <p class="settings-title">Options</p>
+            <p class="settings-title">Mode</p>
 
             <div class="toggle-row">
               <div class="toggle-label">
-                <strong>住所名列を出力</strong>
+                <strong>検証用の住所列を出力</strong>
                 <span>
-                  ONにすると <code>都道府県</code> / <code>市区町村</code> を出力します。
+                  ONにすると <code>勤務地住所1</code> は変更せず、
+                  住所候補の確認列を出力します。
                 </span>
               </div>
 
-              <label class="switch" aria-label="住所名列を出力">
-                <input id="nameColumnsToggle" type="checkbox" />
+              <label class="switch" aria-label="検証用の住所列を出力">
+                <input id="detailModeToggle" type="checkbox" />
                 <span class="slider"></span>
               </label>
             </div>
 
+            <div class="mode-card">
+              <strong>OFF：</strong>通常ETL<br>
+              <code>勤務地住所1</code> を町域で上書き。複数候補はブランク。
+            </div>
+
+            <div class="mode-card">
+              <strong>ON：</strong>検証用詳細<br>
+              <code>住所（町域）</code> / <code>住所（町域_原文）</code> /
+              <code>住所（町域_候補数）</code> / <code>住所（町域_判定）</code> を出力。
+            </div>
+
             <p class="mini">
-              OFFの場合、元CSVに <code>都道府県</code> / <code>市区町村</code> が存在していても、
-              出力CSVからは除外します。
+              ON時は <code>都道府県</code> / <code>市区町村</code> も出力します。
+              OFF時はこれらの検証列を出力CSVから除外します。
             </p>
           </aside>
         </div>
@@ -513,15 +541,25 @@
       "47": "沖縄県"
     };
 
+    const OUTPUT_DETAIL_COLUMNS = [
+      "都道府県",
+      "市区町村",
+      "住所（町域）",
+      "住所（町域_原文）",
+      "住所（町域_候補数）",
+      "住所（町域_判定）"
+    ];
+
     const state = {
-      zipIndex: new Map(),
+      zipPrimaryIndex: new Map(),
+      zipRecordsIndex: new Map(),
       cityNameMap: new Map(),
       ambiguousZipCount: 0
     };
 
     const $status = document.getElementById("status");
     const $csvInput = document.getElementById("csvInput");
-    const $nameColumnsToggle = document.getElementById("nameColumnsToggle");
+    const $detailModeToggle = document.getElementById("detailModeToggle");
 
     function setStatus(message, type = "") {
       $status.textContent = message;
@@ -559,30 +597,43 @@
       return fullCode.slice(-3);
     }
 
-    function buildZipIndex(zipMaster) {
-      const index = new Map();
-      const ambiguous = new Set();
+    function uniqueList(values) {
+      return [...new Set(values.filter(v => String(v ?? "").trim() !== ""))];
+    }
+
+    function buildZipIndexes(zipMaster) {
+      const primaryIndex = new Map();
+      const recordsIndex = new Map();
+      const keysByZip = new Map();
 
       for (const rec of zipMaster) {
         const zip = normalizeZip(rec.zip);
         if (!zip) continue;
 
-        if (!index.has(zip)) {
-          index.set(zip, rec);
-          continue;
+        if (!primaryIndex.has(zip)) {
+          primaryIndex.set(zip, rec);
         }
 
-        const existing = index.get(zip);
-        const existingKey = `${existing.pref}|${normalizeCityCode(existing.city)}`;
-        const newKey = `${rec.pref}|${normalizeCityCode(rec.city)}`;
-
-        if (existingKey !== newKey) {
-          ambiguous.add(zip);
+        if (!recordsIndex.has(zip)) {
+          recordsIndex.set(zip, []);
         }
+        recordsIndex.get(zip).push(rec);
+
+        const codeKey = `${String(rec.pref ?? "")}|${normalizeCityCode(rec.city)}`;
+        if (!keysByZip.has(zip)) {
+          keysByZip.set(zip, new Set());
+        }
+        keysByZip.get(zip).add(codeKey);
       }
 
-      state.zipIndex = index;
-      state.ambiguousZipCount = ambiguous.size;
+      let ambiguousCount = 0;
+      for (const keySet of keysByZip.values()) {
+        if (keySet.size > 1) ambiguousCount++;
+      }
+
+      state.zipPrimaryIndex = primaryIndex;
+      state.zipRecordsIndex = recordsIndex;
+      state.ambiguousZipCount = ambiguousCount;
     }
 
     function buildCityNameMap(raw) {
@@ -641,6 +692,61 @@
       }
 
       return map;
+    }
+
+    function formatAreaAddress(address) {
+      let s = String(address ?? "").trim();
+
+      if (!s) return "";
+
+      s = s.replace(/^[\s　]+|[\s　]+$/g, "");
+
+      // 「以下に掲載がない場合」は町域として上書きしたくないため空欄扱い
+      if (s.includes("以下に掲載がない場合")) {
+        return "";
+      }
+
+      // 例:
+      // 小菅村の次に１～６６３番地がくる場合 → 小菅村
+      // 琴平町の次に４２７番地以降がくる場合 → 琴平町
+      // 白浜町の次に番地がくる場合 → 白浜町
+      s = s.replace(/^(.+?)の次に.*?がくる場合$/, "$1");
+
+      s = s.replace(/^[\s　]+|[\s　]+$/g, "");
+
+      return s;
+    }
+
+    function getAreaInfo(zip) {
+      const records = state.zipRecordsIndex.get(zip) ?? [];
+
+      const rawAddresses = uniqueList(
+        records.map(rec => String(rec.address ?? "").trim())
+      );
+
+      const formattedAddresses = uniqueList(
+        rawAddresses.map(formatAreaAddress)
+      );
+
+      let areaValue = "";
+      let judgment = "";
+
+      if (formattedAddresses.length === 0) {
+        judgment = "候補なし";
+      } else if (formattedAddresses.length === 1) {
+        areaValue = formattedAddresses[0];
+        judgment = "OK";
+      } else {
+        judgment = "複数候補";
+      }
+
+      return {
+        areaValue,
+        rawValue: rawAddresses.join(" / "),
+        candidateCount: formattedAddresses.length,
+        rawCandidateCount: rawAddresses.length,
+        judgment
+      };
     }
 
     function decodeCsvBuffer(buffer) {
@@ -752,7 +858,7 @@
     }
 
     async function processCSV(file) {
-      const shouldOutputNameColumns = $nameColumnsToggle.checked;
+      const detailMode = $detailModeToggle.checked;
 
       setStatus("CSVを読み込んでいます...");
 
@@ -778,31 +884,53 @@
       const prefCodeIdx = ensureColumn(header, dataRows, "県コード1");
       const cityCodeIdx = ensureColumn(header, dataRows, "市区町村コード1");
 
+      let workAddressIdx = -1;
+
       let prefNameIdx = -1;
       let cityNameIdx = -1;
+      let areaIdx = -1;
+      let areaRawIdx = -1;
+      let areaCountIdx = -1;
+      let areaJudgeIdx = -1;
 
-      if (shouldOutputNameColumns) {
+      if (detailMode) {
         prefNameIdx = ensureColumn(header, dataRows, "都道府県");
         cityNameIdx = ensureColumn(header, dataRows, "市区町村");
+        areaIdx = ensureColumn(header, dataRows, "住所（町域）");
+        areaRawIdx = ensureColumn(header, dataRows, "住所（町域_原文）");
+        areaCountIdx = ensureColumn(header, dataRows, "住所（町域_候補数）");
+        areaJudgeIdx = ensureColumn(header, dataRows, "住所（町域_判定）");
+      } else {
+        workAddressIdx = ensureColumn(header, dataRows, "勤務地住所1");
       }
 
       let matched = 0;
       let unmatched = 0;
+      let areaOk = 0;
+      let areaMultiple = 0;
+      let areaMissing = 0;
       let cityNameMissing = 0;
 
       for (const row of dataRows) {
         while (row.length < header.length) row.push("");
 
         const zip = normalizeZip(row[zipIdx]);
-        const rec = state.zipIndex.get(zip);
+        const rec = state.zipPrimaryIndex.get(zip);
+        const areaInfo = getAreaInfo(zip);
 
         if (!zip || !rec) {
           row[prefCodeIdx] = "";
           row[cityCodeIdx] = "";
 
-          if (shouldOutputNameColumns) {
+          if (detailMode) {
             row[prefNameIdx] = "";
             row[cityNameIdx] = "";
+            row[areaIdx] = "";
+            row[areaRawIdx] = "";
+            row[areaCountIdx] = "";
+            row[areaJudgeIdx] = "郵便番号未取得";
+          } else {
+            row[workAddressIdx] = "";
           }
 
           unmatched++;
@@ -816,11 +944,18 @@
 
         row[prefCodeIdx] = prefCode;
 
-        // ここが今回の修正点：
-        // 市区町村コード1には、都道府県コードを除いた下3桁のみ出力する
+        // 市区町村コード1には、都道府県コードを除いた下3桁のみ出力
         row[cityCodeIdx] = municipalityCode3;
 
-        if (shouldOutputNameColumns) {
+        if (areaInfo.judgment === "OK") {
+          areaOk++;
+        } else if (areaInfo.judgment === "複数候補") {
+          areaMultiple++;
+        } else {
+          areaMissing++;
+        }
+
+        if (detailMode) {
           const prefName =
             rec.prefName ??
             rec.pref_name ??
@@ -838,10 +973,19 @@
 
           row[prefNameIdx] = prefName;
           row[cityNameIdx] = cityName;
+          row[areaIdx] = areaInfo.areaValue;
+          row[areaRawIdx] = areaInfo.rawValue;
+          row[areaCountIdx] = String(areaInfo.candidateCount);
+          row[areaJudgeIdx] = areaInfo.judgment;
 
           if (!cityName) {
             cityNameMissing++;
           }
+        } else {
+          // 通常モード：
+          // 町域候補が一意の場合のみ 勤務地住所1 に上書き。
+          // 複数候補・候補なしの場合は誤上書きを避けてブランク。
+          row[workAddressIdx] = areaInfo.judgment === "OK" ? areaInfo.areaValue : "";
         }
 
         matched++;
@@ -849,14 +993,15 @@
 
       let outputRows = [header, ...dataRows];
 
-      if (!shouldOutputNameColumns) {
+      if (!detailMode) {
         const removeIndexes = [];
 
-        const prefNameExistingIdx = header.indexOf("都道府県");
-        const cityNameExistingIdx = header.indexOf("市区町村");
-
-        if (prefNameExistingIdx !== -1) removeIndexes.push(prefNameExistingIdx);
-        if (cityNameExistingIdx !== -1) removeIndexes.push(cityNameExistingIdx);
+        for (const columnName of OUTPUT_DETAIL_COLUMNS) {
+          const idx = header.indexOf(columnName);
+          if (idx !== -1) {
+            removeIndexes.push(idx);
+          }
+        }
 
         outputRows = removeColumns(outputRows, removeIndexes);
       }
@@ -869,25 +1014,31 @@
 
       const lines = [
         "処理が完了しました。",
+        `モード: ${detailMode ? "検証用詳細モード" : "通常ETLモード"}`,
         `入力行数: ${dataRows.length.toLocaleString()}件`,
         `郵便番号マッチ: ${matched.toLocaleString()}件`,
-        `未取得: ${unmatched.toLocaleString()}件`,
+        `郵便番号未取得: ${unmatched.toLocaleString()}件`,
         `市区町村コード1: 下3桁のみ出力`,
-        `住所名列: ${shouldOutputNameColumns ? "出力する" : "出力しない"}`,
-        `ダウンロードファイル: ${outputName}`
+        `町域OK: ${areaOk.toLocaleString()}件`,
+        `町域複数候補: ${areaMultiple.toLocaleString()}件`,
+        `町域候補なし: ${areaMissing.toLocaleString()}件`
       ];
 
-      if (shouldOutputNameColumns) {
-        lines.splice(
-          6,
-          0,
-          `市区町村名未取得: ${cityNameMissing.toLocaleString()}件`
-        );
+      if (detailMode) {
+        lines.push(`市区町村名未取得: ${cityNameMissing.toLocaleString()}件`);
+        lines.push("勤務地住所1: 変更なし");
+      } else {
+        lines.push("勤務地住所1: 町域OKの場合のみ上書き");
+        lines.push("検証列: 出力しない");
       }
+
+      lines.push(`ダウンロードファイル: ${outputName}`);
 
       const hasWarning =
         unmatched > 0 ||
-        (shouldOutputNameColumns && cityNameMissing > 0);
+        areaMultiple > 0 ||
+        areaMissing > 0 ||
+        (detailMode && cityNameMissing > 0);
 
       setStatus(lines.join("\n"), hasWarning ? "warn" : "ok");
     }
@@ -897,25 +1048,25 @@
         setStatus("郵便番号マスタを読み込んでいます...");
 
         const zipMaster = await loadJson(ZIP_MASTER_PATH, true);
-        buildZipIndex(zipMaster);
+        buildZipIndexes(zipMaster);
 
         const cityMaster = await loadJson(CITY_MASTER_PATH, false);
         state.cityNameMap = buildCityNameMap(cityMaster);
 
         const lines = [
-          `郵便番号マスタ: ${state.zipIndex.size.toLocaleString()}件`,
+          `郵便番号マスタ: ${state.zipPrimaryIndex.size.toLocaleString()}件`,
           `市区町村名マスタ: ${state.cityNameMap.size.toLocaleString()}件`,
           `同一郵便番号で県・市区町村コードが分かれる可能性: ${state.ambiguousZipCount.toLocaleString()}件`,
           "",
           "CSVをアップロードすると、自動で変換してダウンロードします。",
-          "市区町村コード1は下3桁のみ出力します。",
-          "住所名列の出力は右側のトグルで切り替えできます。"
+          "通常ETLモードでは、町域候補が一意の場合のみ 勤務地住所1 を上書きします。",
+          "検証用詳細モードでは、勤務地住所1を変更せず、町域候補の確認列を出力します。"
         ];
 
         setStatus(lines.join("\n"), "ok");
         $csvInput.disabled = false;
       } catch (err) {
-        setStatus(err.message, "warn");
+        setStatus(err.message, "error");
         $csvInput.disabled = true;
       }
     }
@@ -927,7 +1078,7 @@
       try {
         await processCSV(file);
       } catch (err) {
-        setStatus(err.message, "warn");
+        setStatus(err.message, "error");
       } finally {
         event.target.value = "";
       }
