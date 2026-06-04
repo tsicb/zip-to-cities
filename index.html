@@ -3,93 +3,372 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>郵便番号コード付与ETL</title>
+  <title>Zipcode ETL</title>
+
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 40px;
-      line-height: 1.7;
-      color: #222;
-      background: #f7f7f8;
+    :root {
+      --bg: #0b0f17;
+      --panel: rgba(255, 255, 255, 0.08);
+      --panel-strong: rgba(255, 255, 255, 0.12);
+      --border: rgba(255, 255, 255, 0.14);
+      --text: #f5f7fb;
+      --muted: #9aa4b2;
+      --accent: #74d4ff;
+      --accent-2: #9cffcb;
+      --danger: #ff9aa2;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      --radius: 24px;
     }
 
-    .app {
-      max-width: 760px;
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Noto Sans JP",
+        sans-serif;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(116, 212, 255, 0.18), transparent 32%),
+        radial-gradient(circle at 85% 20%, rgba(156, 255, 203, 0.14), transparent 28%),
+        linear-gradient(145deg, #070a10, #101725 60%, #090d14);
+    }
+
+    .wrap {
+      width: min(920px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 28px;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+      padding: 56px 0;
+    }
+
+    .hero {
+      margin-bottom: 28px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.06);
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      backdrop-filter: blur(16px);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 18px rgba(156, 255, 203, 0.8);
     }
 
     h1 {
-      font-size: 24px;
-      margin: 0 0 12px;
+      margin: 22px 0 10px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.05;
+      letter-spacing: -0.05em;
     }
 
-    .note {
-      color: #555;
-      font-size: 14px;
-      margin-bottom: 24px;
+    .lead {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.9;
     }
 
-    .box {
-      border: 1px dashed #bbb;
-      border-radius: 12px;
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, var(--panel-strong), var(--panel));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+    }
+
+    .panel-inner {
+      padding: 28px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 760px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .upload {
+      position: relative;
+      display: flex;
+      min-height: 210px;
+      align-items: center;
+      justify-content: center;
       padding: 24px;
-      background: #fafafa;
-      margin: 20px 0;
+      border: 1px dashed rgba(255, 255, 255, 0.28);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.045);
+      transition: 0.18s ease;
     }
 
-    input[type="file"] {
+    .upload:hover {
+      border-color: rgba(116, 212, 255, 0.75);
+      background: rgba(116, 212, 255, 0.07);
+    }
+
+    .upload input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload input:disabled {
+      cursor: not-allowed;
+    }
+
+    .upload-content {
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .upload-icon {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+      border-radius: 18px;
+      background: rgba(116, 212, 255, 0.13);
+      color: var(--accent);
+      font-size: 26px;
+    }
+
+    .upload-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .upload-sub {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .settings {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .settings-title {
+      margin: 0 0 16px;
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .toggle-row:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .toggle-label {
+      min-width: 0;
+    }
+
+    .toggle-label strong {
       display: block;
-      margin-top: 12px;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .toggle-label span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .switch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 54px;
+      height: 30px;
+    }
+
+    .switch input {
+      display: none;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #ffffff;
+      transition: 0.18s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .switch input:checked + .slider {
+      background: rgba(116, 212, 255, 0.35);
+      border-color: rgba(116, 212, 255, 0.8);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(24px);
+      background: var(--accent);
+    }
+
+    .mini {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
     }
 
     .status {
+      margin-top: 18px;
+      padding: 18px 20px;
+      min-height: 116px;
+      border-top: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--muted);
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+      font-size: 13px;
+      line-height: 1.7;
       white-space: pre-wrap;
-      background: #f1f3f5;
-      border-radius: 10px;
-      padding: 14px;
-      margin-top: 20px;
-      font-size: 14px;
     }
 
-    .ok {
-      color: #087f5b;
-      font-weight: 600;
+    .status.ok {
+      color: var(--accent-2);
     }
 
-    .warn {
-      color: #c92a2a;
-      font-weight: 600;
+    .status.warn {
+      color: var(--danger);
     }
 
     code {
-      background: #f1f3f5;
-      padding: 2px 6px;
-      border-radius: 6px;
+      padding: 2px 7px;
+      border-radius: 7px;
+      color: #dff6ff;
+      background: rgba(255, 255, 255, 0.08);
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+      font-size: 0.92em;
     }
   </style>
 </head>
+
 <body>
-  <main class="app">
-    <h1>郵便番号コード付与ETL</h1>
+  <main class="wrap">
+    <section class="hero">
+      <div class="badge">
+        <span class="dot"></span>
+        CSV ZIPCODE ETL
+      </div>
 
-    <p class="note">
-      CSVの <code>郵便番号1</code> 列をもとに、
-      <code>県コード1</code> / <code>市区町村コード1</code> / <code>都道府県</code> / <code>市区町村</code>
-      を付与して、自動でCSVをダウンロードします。
-    </p>
+      <h1>郵便番号から<br>住所コードを付与</h1>
 
-    <div class="box">
-      <label>
-        CSVファイルを選択してください
-        <input id="csvInput" type="file" accept=".csv,text/csv" disabled />
-      </label>
-    </div>
+      <p class="lead">
+        <code>郵便番号1</code> をもとに、
+        <code>県コード1</code> と <code>市区町村コード1</code> を自動付与します。
+        必要に応じて、都道府県名・市区町村名も出力できます。
+      </p>
+    </section>
 
-    <div id="status" class="status">初期化中です...</div>
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="grid">
+          <label class="upload">
+            <input id="csvInput" type="file" accept=".csv,text/csv" disabled />
+            <div class="upload-content">
+              <div class="upload-icon">↥</div>
+              <p class="upload-title">CSVをアップロード</p>
+              <p class="upload-sub">UTF-8 / Shift_JIS に対応</p>
+            </div>
+          </label>
+
+          <aside class="settings">
+            <p class="settings-title">Options</p>
+
+            <div class="toggle-row">
+              <div class="toggle-label">
+                <strong>住所名列を出力</strong>
+                <span>
+                  ONにすると <code>都道府県</code> / <code>市区町村</code> を出力します。
+                </span>
+              </div>
+
+              <label class="switch" aria-label="住所名列を出力">
+                <input id="nameColumnsToggle" type="checkbox" />
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <p class="mini">
+              OFFの場合、元CSVに <code>都道府県</code> / <code>市区町村</code> が存在していても、
+              出力CSVからは除外します。
+            </p>
+          </aside>
+        </div>
+      </div>
+
+      <div id="status" class="status">初期化中です...</div>
+    </section>
   </main>
 
   <script>
@@ -154,10 +433,10 @@
 
     const $status = document.getElementById("status");
     const $csvInput = document.getElementById("csvInput");
+    const $nameColumnsToggle = document.getElementById("nameColumnsToggle");
 
     function setStatus(message, type = "") {
-      const prefix = type === "ok" ? "完了: " : type === "warn" ? "注意: " : "";
-      $status.textContent = prefix + message;
+      $status.textContent = message;
       $status.className = "status" + (type ? " " + type : "");
     }
 
@@ -194,9 +473,6 @@
         const zip = normalizeZip(rec.zip);
         if (!zip) continue;
 
-        const pref = String(rec.pref ?? "");
-        const city = String(rec.city ?? "");
-
         if (!index.has(zip)) {
           index.set(zip, rec);
           continue;
@@ -204,7 +480,7 @@
 
         const existing = index.get(zip);
         const existingKey = `${existing.pref}|${existing.city}`;
-        const newKey = `${pref}|${city}`;
+        const newKey = `${rec.pref}|${rec.city}`;
 
         if (existingKey !== newKey) {
           ambiguous.add(zip);
@@ -226,20 +502,23 @@
             item.cityCode ??
             item.city_code ??
             item.municipalityCode ??
-            item["市区町村コード"];
+            item["市区町村コード"] ??
+            item["市区町村コード1"];
 
           const name =
             item.name ??
             item.cityName ??
             item.city_name ??
             item.municipalityName ??
-            item["市区町村"];
+            item["市区町村"] ??
+            item["市区町村名"];
 
           if (code && name) {
             map.set(String(code), String(name));
             map.set(normalizeCityCode(code), String(name));
           }
         }
+
         return map;
       }
 
@@ -256,6 +535,7 @@
               value.city_name ??
               value.municipalityName ??
               value["市区町村"] ??
+              value["市区町村名"] ??
               "";
           }
 
@@ -351,6 +631,14 @@
       return idx;
     }
 
+    function removeColumns(rows, columnIndexesToRemove) {
+      const removeSet = new Set(columnIndexesToRemove);
+
+      return rows.map(row => {
+        return row.filter((_, index) => !removeSet.has(index));
+      });
+    }
+
     function getBaseName(fileName) {
       return fileName.replace(/\.[^.]*$/, "");
     }
@@ -370,6 +658,8 @@
     }
 
     async function processCSV(file) {
+      const shouldOutputNameColumns = $nameColumnsToggle.checked;
+
       setStatus("CSVを読み込んでいます...");
 
       const buffer = await file.arrayBuffer();
@@ -394,11 +684,18 @@
 
       const prefCodeIdx = ensureColumn(header, dataRows, "県コード1");
       const cityCodeIdx = ensureColumn(header, dataRows, "市区町村コード1");
-      const prefNameIdx = ensureColumn(header, dataRows, "都道府県");
-      const cityNameIdx = ensureColumn(header, dataRows, "市区町村");
+
+      let prefNameIdx = -1;
+      let cityNameIdx = -1;
+
+      if (shouldOutputNameColumns) {
+        prefNameIdx = ensureColumn(header, dataRows, "都道府県");
+        cityNameIdx = ensureColumn(header, dataRows, "市区町村");
+      }
 
       let matched = 0;
       let unmatched = 0;
+      let cityNameMissing = 0;
 
       for (const row of dataRows) {
         while (row.length < header.length) row.push("");
@@ -409,8 +706,12 @@
         if (!zip || !rec) {
           row[prefCodeIdx] = "";
           row[cityCodeIdx] = "";
-          row[prefNameIdx] = "";
-          row[cityNameIdx] = "";
+
+          if (shouldOutputNameColumns) {
+            row[prefNameIdx] = "";
+            row[cityNameIdx] = "";
+          }
+
           unmatched++;
           continue;
         }
@@ -419,53 +720,77 @@
         const cityCode = String(rec.city ?? "");
         const normalizedCityCode = normalizeCityCode(cityCode);
 
-        const prefName =
-          rec.prefName ??
-          rec.pref_name ??
-          rec.prefecture ??
-          PREF_NAMES[String(Number(prefCode))] ??
-          "";
-
-        const cityName =
-          rec.cityName ??
-          rec.city_name ??
-          rec.municipalityName ??
-          state.cityNameMap.get(cityCode) ??
-          state.cityNameMap.get(normalizedCityCode) ??
-          "";
-
         row[prefCodeIdx] = prefCode;
         row[cityCodeIdx] = cityCode;
-        row[prefNameIdx] = prefName;
-        row[cityNameIdx] = cityName;
+
+        if (shouldOutputNameColumns) {
+          const prefName =
+            rec.prefName ??
+            rec.pref_name ??
+            rec.prefecture ??
+            PREF_NAMES[String(Number(prefCode))] ??
+            "";
+
+          const cityName =
+            rec.cityName ??
+            rec.city_name ??
+            rec.municipalityName ??
+            state.cityNameMap.get(cityCode) ??
+            state.cityNameMap.get(normalizedCityCode) ??
+            "";
+
+          row[prefNameIdx] = prefName;
+          row[cityNameIdx] = cityName;
+
+          if (!cityName) {
+            cityNameMissing++;
+          }
+        }
 
         matched++;
       }
 
-      const outputRows = [header, ...dataRows];
+      let outputRows = [header, ...dataRows];
 
-      // Excelで開きやすいように UTF-8 BOM 付きで出力
+      if (!shouldOutputNameColumns) {
+        const removeIndexes = [];
+
+        const prefNameExistingIdx = header.indexOf("都道府県");
+        const cityNameExistingIdx = header.indexOf("市区町村");
+
+        if (prefNameExistingIdx !== -1) removeIndexes.push(prefNameExistingIdx);
+        if (cityNameExistingIdx !== -1) removeIndexes.push(cityNameExistingIdx);
+
+        outputRows = removeColumns(outputRows, removeIndexes);
+      }
+
       const outputCsv = "\uFEFF" + toCSV(outputRows);
       const outputName = `${getBaseName(file.name)}_zipcode_etl.csv`;
 
       downloadTextAsFile(outputCsv, outputName);
 
-      const cityMasterMessage =
-        state.cityNameMap.size > 0
-          ? `市区町村名マスタ: ${state.cityNameMap.size.toLocaleString()}件`
-          : "市区町村名マスタ: 未読込のため、市区町村名は空欄になる場合があります。";
+      const lines = [
+        "処理が完了しました。",
+        `入力行数: ${dataRows.length.toLocaleString()}件`,
+        `郵便番号マッチ: ${matched.toLocaleString()}件`,
+        `未取得: ${unmatched.toLocaleString()}件`,
+        `住所名列: ${shouldOutputNameColumns ? "出力する" : "出力しない"}`,
+        `ダウンロードファイル: ${outputName}`
+      ];
 
-      setStatus(
-        [
-          `処理が完了しました。`,
-          `入力行数: ${dataRows.length.toLocaleString()}件`,
-          `郵便番号マッチ: ${matched.toLocaleString()}件`,
-          `未取得: ${unmatched.toLocaleString()}件`,
-          cityMasterMessage,
-          `ダウンロードファイル: ${outputName}`
-        ].join("\n"),
-        unmatched > 0 || state.cityNameMap.size === 0 ? "warn" : "ok"
-      );
+      if (shouldOutputNameColumns) {
+        lines.splice(
+          5,
+          0,
+          `市区町村名未取得: ${cityNameMissing.toLocaleString()}件`
+        );
+      }
+
+      const hasWarning =
+        unmatched > 0 ||
+        (shouldOutputNameColumns && cityNameMissing > 0);
+
+      setStatus(lines.join("\n"), hasWarning ? "warn" : "ok");
     }
 
     async function init() {
@@ -478,21 +803,16 @@
         const cityMaster = await loadJson(CITY_MASTER_PATH, false);
         state.cityNameMap = buildCityNameMap(cityMaster);
 
-        const messages = [
-          `郵便番号マスタ読込済み: ${state.zipIndex.size.toLocaleString()}件`,
-          `同一郵便番号で県・市区町村コードが分かれる可能性のある件数: ${state.ambiguousZipCount.toLocaleString()}件`
+        const lines = [
+          `郵便番号マスタ: ${state.zipIndex.size.toLocaleString()}件`,
+          `市区町村名マスタ: ${state.cityNameMap.size.toLocaleString()}件`,
+          `同一郵便番号で県・市区町村コードが分かれる可能性: ${state.ambiguousZipCount.toLocaleString()}件`,
+          "",
+          "CSVをアップロードすると、自動で変換してダウンロードします。",
+          "住所名列の出力は右側のトグルで切り替えできます。"
         ];
 
-        if (state.cityNameMap.size > 0) {
-          messages.push(`市区町村名マスタ読込済み: ${state.cityNameMap.size.toLocaleString()}件`);
-        } else {
-          messages.push("city_master.json は見つかりませんでした。市区町村名まで入れたい場合は、同じ階層に追加してください。");
-        }
-
-        messages.push("");
-        messages.push("CSVファイルを選択すると、自動で変換してダウンロードします。");
-
-        setStatus(messages.join("\n"), state.cityNameMap.size > 0 ? "ok" : "warn");
+        setStatus(lines.join("\n"), "ok");
         $csvInput.disabled = false;
       } catch (err) {
         setStatus(err.message, "warn");
